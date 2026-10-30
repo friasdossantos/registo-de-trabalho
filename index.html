@@ -215,7 +215,8 @@ $('cb-sv').onclick=async function(){var b=this;b.disabled=true;
   S.q.push({id:uid(),t:'c',d:{data:$('cb-data').value,nome:nome,valor:n($('cb-val').value),notas:$('cb-nt').value.trim()}});await kv.set('q',S.q);
   toast(navigator.onLine?'Pagamento guardado':'Guardado no telemóvel (por enviar)');['cb-val','cb-nt','cb-nome'].forEach(function(i){$(i).value=''});$('cb-nome-nw').classList.add('hidden');refresh();sync()}
  catch(e){toast((e&&e.message)||String(e),true)}b.disabled=false};
-(async function(){var c=cfg();$('cfg-url').value=c.url||'';$('cfg-k').value=c.k||'';
+(async function(){var qs=new URLSearchParams(location.search);if(qs.get('u')&&qs.get('k')){localStorage.setItem('cfg',JSON.stringify({url:qs.get('u'),k:qs.get('k')}));history.replaceState(null,'',location.pathname)}
+ var c=cfg();$('cfg-url').value=c.url||'';$('cfg-k').value=c.k||'';
  S.q=(await kv.get('q'))||[];S.ts=(await kv.get('ts'))||0;S.d=(await kv.get('dump'))||null;
  if(S.d){C=S.d.cfg;build();buildX();refresh()}else{status();document.querySelector('nav button[data-v="cfg"]').click();$('cfg-i').textContent='Primeira utilização: indica o endereço e a chave, com rede.'}
  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');sync()})();
