@@ -40,7 +40,7 @@ nav{overflow-x:auto}nav button{flex:1 0 auto;min-width:86px;padding:0 6px}
 <section class="view" id="v-des"><h1>Despesas</h1><div id="des-f"></div><button class="btn" id="des-sv" type="button">Guardar despesa</button><h2>Últimas despesas</h2><div id="des-l"></div></section>
 <section class="view" id="v-ext"><h1>Extrato</h1><div id="x-f"></div><button class="btn" id="x-go" type="button">Ver extrato</button><div id="x-r" style="margin-top:14px"></div></section>
 <section class="view" id="v-sal"><h1>Saldos</h1><div class="big">Saldo total<b id="sal-t"></b></div><p style="color:var(--mut);margin:0 0 10px">Negativo = cliente em dívida · positivo = a haver.</p><div id="sal-l"></div></section>
-<section class="view" id="v-col"><h1>Colaboradores</h1><div id="cb-l"></div><h2>Registar pagamento</h2><div id="cb-f"></div><button class="btn" id="cb-sv" type="button">Guardar pagamento</button><h2>Últimos pagamentos</h2><div id="cb-p"></div></section>
+<section class="view" id="v-col"><h1>Colaboradores</h1><div id="cb-l"></div><h2>Registar pagamento ou acerto</h2><div id="cb-f"></div><button class="btn" id="cb-sv" type="button">Guardar</button><h2>Últimos pagamentos</h2><div id="cb-p"></div></section>
 <section class="view" id="v-cfg"><h1>Definições</h1>
 <label for="cfg-url">Endereço do Apps Script (termina em /exec)</label><input id="cfg-url" type="text" autocomplete="off">
 <label for="cfg-k">Chave</label><input id="cfg-k" type="text" autocomplete="off">
@@ -131,7 +131,7 @@ function calc(){if(!D)return;var g=function(i){return n($(i).value)},vc=0,i,l,j;
  $('t-calc').textContent=eur(tc);$('t-reg').textContent=eur(reg)}
 
 function buildX(){
- $('cb-f').innerHTML=nk(inp('cb-data','Data','date')+sl('cb-nome','Colaborador','colab')+inp('cb-val','Valor pago')+inp('cb-nt','Notas','text'));
+ $('cb-f').innerHTML=nk('<div><label for="cb-tipo">Tipo</label><select id="cb-tipo"><option value="p">Pagamento feito ao colaborador</option><option value="d">Valor devido pelo colaborador (abate)</option></select></div>'+inp('cb-data','Data','date')+sl('cb-nome','Colaborador','colab')+inp('cb-val','Valor')+inp('cb-nt','Notas','text'));
  $('des-f').innerHTML=nk(inp('ds-data','Data','date')+sl('ds-cat','Categoria','categoria')+inp('ds-desc','Descrição','text')+inp('ds-forn','Fornecedor (opcional)','text')+inp('ds-val','Valor')+sl('ds-cli','Cliente (opcional)','cliente')+sl('ds-obra','Ref. obra (opcional)','obra')+inp('ds-nt','Notas','text'));
  $('x-f').innerHTML='<div class="seg"><button type="button" data-p="w">Esta semana</button><button type="button" data-p="m">Este mês</button><button type="button" data-p="t">Tudo</button></div><div class="g2">'+nk(inp('x-de','De','date')+inp('x-ate','Até','date'))+'</div><div class="g2"><div><label for="x-cli">Cliente</label><select id="x-cli"></select></div><div><label for="x-obra">Ref. obra</label><select id="x-obra"></select></div></div>'}
 function fillX(){[['x-cli',D.cli],['x-obra',D.obra]].forEach(function(a){var s=$(a[0]),c=s.value;s.innerHTML='<option value="">Todos</option>'+a[1].map(function(x){return'<option>'+esc(x)+'</option>'}).join('');s.value=c});
@@ -200,19 +200,19 @@ document.querySelectorAll('nav button').forEach(function(bt){bt.addEventListener
  document.querySelectorAll('nav button').forEach(function(x){x.classList.toggle('on',x===bt)});
  document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('on',v.id==='v-'+bt.dataset.v)});window.scrollTo(0,0)})});
 
-function colabs(){var m={},acc=function(k){return m[k]||(m[k]={devido:0,pago:0})},R=function(v){return Math.round(v*100)/100};
+function colabs(){var m={},acc=function(k){return m[k]||(m[k]={devido:0,pago:0,abat:0})},R=function(v){return Math.round(v*100)/100};
  ents().forEach(function(o){for(var i=2;i<=C.NC;i++){var nm=String(o['n'+i]||'').trim();if(nm)acc(nm).devido+=n(o['vi'+i])}
   for(var j=1;j<=C.NP;j++){var pn=String(o['p'+j+'par']||'').trim();if(pn)acc(pn).devido+=n(o['p'+j+'pg'])}});
- var pg=(S.d.pagc||[]).map(function(r){return{data:r[0],nome:String(r[1]).trim(),valor:n(r[2]),notas:r[3]}});
- S.q.forEach(function(it){if(it.t==='c')pg.push({data:it.d.data,nome:it.d.nome,valor:n(it.d.valor),notas:it.d.notas})});
- pg.forEach(function(p){if(p.nome)acc(p.nome).pago+=p.valor});
- return{linhas:Object.keys(m).sort().map(function(k){return{nome:k,devido:R(m[k].devido),pago:R(m[k].pago),falta:R(m[k].devido-m[k].pago)}}),recentes:pg.slice(-8).reverse()}}
+ var pg=(S.d.pagc||[]).map(function(r){return{data:r[0],nome:String(r[1]).trim(),valor:n(r[2]),notas:r[3],tipo:String(r[4]||'')==='Débito'?'Débito':'Pagamento'}});
+ S.q.forEach(function(it){if(it.t==='c')pg.push({data:it.d.data,nome:it.d.nome,valor:n(it.d.valor),notas:it.d.notas,tipo:it.d.tipo==='d'?'Débito':'Pagamento'})});
+ pg.forEach(function(p){if(p.nome){if(p.tipo==='Débito')acc(p.nome).abat+=p.valor;else acc(p.nome).pago+=p.valor}});
+ return{linhas:Object.keys(m).sort().map(function(k){return{nome:k,devido:R(m[k].devido),pago:R(m[k].pago),abat:R(m[k].abat),falta:R(m[k].devido-m[k].pago-m[k].abat)}}),recentes:pg.slice(-8).reverse()}}
 function renderCol(){var r=colabs();
- $('cb-l').innerHTML=r.linhas.length?r.linhas.map(function(l){return'<div class="cl2"><b>'+esc(l.nome)+'</b><div>Devido '+eur(l.devido)+' · Pago '+eur(l.pago)+'</div><div><b>Em falta '+eur(l.falta)+'</b></div></div>'}).join(''):'<div class="cl2">Ainda sem valores devidos a colaboradores.</div>';
- $('cb-p').innerHTML=r.recentes.length?r.recentes.map(function(p){return'<div class="cl2"><b>'+fd(p.data)+' · '+esc(p.nome)+' · '+eur(p.valor)+'</b>'+(p.notas?'<div>'+esc(p.notas)+'</div>':'')+'</div>'}).join(''):'<div class="cl2">Ainda sem pagamentos.</div>'}
+ $('cb-l').innerHTML=r.linhas.length?r.linhas.map(function(l){return'<div class="cl2"><b>'+esc(l.nome)+'</b><div>Devido '+eur(l.devido)+' · Pago '+eur(l.pago)+(l.abat?' · A abater '+eur(l.abat):'')+'</div><div><b>Em falta '+eur(l.falta)+'</b></div></div>'}).join(''):'<div class="cl2">Ainda sem valores devidos a colaboradores.</div>';
+ $('cb-p').innerHTML=r.recentes.length?r.recentes.map(function(p){return'<div class="cl2"><b>'+fd(p.data)+' · '+esc(p.nome)+' · '+eur(p.valor)+(p.tipo==='Débito'?' · débito (abate)':'')+'</b>'+(p.notas?'<div>'+esc(p.notas)+'</div>':'')+'</div>'}).join(''):'<div class="cl2">Ainda sem pagamentos.</div>'}
 $('cb-sv').onclick=async function(){var b=this;b.disabled=true;
  try{var nome=await res('cb-nome','colab');if(!nome)throw new Error('Escolhe o colaborador.');if(!n($('cb-val').value))throw new Error('Indica o valor.');
-  S.q.push({id:uid(),t:'c',d:{data:$('cb-data').value,nome:nome,valor:n($('cb-val').value),notas:$('cb-nt').value.trim()}});await kv.set('q',S.q);
+  S.q.push({id:uid(),t:'c',d:{data:$('cb-data').value,nome:nome,valor:n($('cb-val').value),notas:$('cb-nt').value.trim(),tipo:$('cb-tipo').value}});await kv.set('q',S.q);
   toast(navigator.onLine?'Pagamento guardado':'Guardado no telemóvel (por enviar)');['cb-val','cb-nt','cb-nome'].forEach(function(i){$(i).value=''});$('cb-nome-nw').classList.add('hidden');refresh();sync()}
  catch(e){toast((e&&e.message)||String(e),true)}b.disabled=false};
 (async function(){var qs=new URLSearchParams(location.search);if(qs.get('u')&&qs.get('k')){localStorage.setItem('cfg',JSON.stringify({url:qs.get('u'),k:qs.get('k')}));history.replaceState(null,'',location.pathname)}
